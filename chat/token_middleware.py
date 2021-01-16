@@ -3,22 +3,22 @@ from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 
 from knox.models import AuthToken as Token
+from knox.auth import TokenAuthentication
 from urllib.parse import parse_qs
+from knox import crypto
 
 
 @database_sync_to_async
 def get_user(scope):
-    print(scope["headers"])
-    headers = dict(scope["headers"])
-    if b"authorization" in headers:
-        try:
-            token_name, token_key = headers[b"authorization"].decode().split()
-            if token_name == "Token":
-                token = Token.objects.get(token_key=token_key)
-                return token.user
-        except Token.DoesNotExist:
-            return AnonymousUser()
-    return AnonymousUser()
+    try:
+        token_key = parse_qs(scope["query_string"].decode("utf8"))["token"][0]
+        auther = TokenAuthentication()
+        user, token = auther.authenticate_credentials(token_key.encode())
+        return user
+    except Token.DoesNotExist:
+        return AnonymousUser()
+    except KeyError:
+        return AnonymousUser()
 
 
 class TokenAuthMiddleware:
@@ -37,5 +37,6 @@ class TokenAuthMiddlewareInstance:
     async def __call__(self, receive, send):
         self.scope["user"] = await get_user(self.scope)
         return await self.inner(self.scope, receive, send)
+
 
 TokenAuthMiddlewareStack = lambda inner: TokenAuthMiddleware(AuthMiddlewareStack(inner))

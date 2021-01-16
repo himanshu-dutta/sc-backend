@@ -20,6 +20,16 @@
                 <br/>
                 <form>
                     <div class="form-group">
+                        <input class="form-control" id="username" type="text"></br>
+                    </div>
+                    <div class="form-group">
+                        <input class="form-control" id="password" type="password" autocomplete="on"></br>
+                    </div>
+                    <input class="btn btn-secondary btn-lg btn-block" id="login" type="button" value="Send">
+                </form>
+
+                <form>
+                    <div class="form-group">
                         <label for="exampleFormControlTextarea1" class="h4 pt-5">Chatroom</label>
                         <textarea class="form-control" id="chat-text" rows="10"></textarea><br>
                     </div>
@@ -38,37 +48,56 @@
     {{ username|json_script:"user-name" }}
 
     <script>
-        document.querySelector("#submit").onclick = (e) => {
-            const message= document.querySelector("#input").value;
-            chatSocket.send(JSON.stringify({
-                text: message,
-                media: null,
-                sender: sender 
 
-            }))
-            document.querySelector("#input").value = "";
-        };
+        document.querySelector("#login").onclick = (e) => {
+            const username= document.querySelector("#username").value;
+            const password= document.querySelector("#password").value;
+            const get_token_data = fetch('http://127.0.0.1:8000/api/login/', { 
+                method: 'POST', 
+                headers: {
+                'Content-Type': 'application/json'
+                // 'Content-Type': 'application/x-www-form-urlencoded',
+                },
 
+                body: JSON.stringify({
+                    "username" : username,
+                    "password" : password
+                })
+            }).then(response => response.json())
+            .then(data => {
+                const username = JSON.parse(document.getElementById('user-name').textContent);
+                const sender = JSON.parse(document.getElementById('user_username').textContent);
 
+                console.log('Success:', data);
+                chatSocket = new WebSocket(
+                    "ws://" + 
+                    window.location.host +
+                    "/conversation/" +
+                    username + 
+                    `/?token=${data.token}`
+                );
 
+                chatSocket.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    console.log(data.previous_messages && JSON.parse(data.previous_messages));
+                    document.querySelector("#user-hello").innerHTML = data.tester;
+                    document.querySelector("#chat-text").innerHTML += (data.text && data.sender + ": " + data.text + "\n") || "";
+                }
+                
+                document.querySelector("#submit").onclick = (e) => {
+                    const message= document.querySelector("#input").value;
+                    chatSocket.send(JSON.stringify({
+                        text: message,
+                        media: null,
+                        sender: sender 
 
-        const username = JSON.parse(document.getElementById('user-name').textContent);
-        const sender = JSON.parse(document.getElementById('user_username').textContent);
-         
-        const chatSocket = new WebSocket(
-            "ws://" + 
-            window.location.host +
-            "/conversation/" +
-            username + 
-            "/"
-        );
-
-        chatSocket.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-            console.log(data.previous_messages && JSON.parse(data.previous_messages));
-            document.querySelector("#user-hello").innerHTML = data.tester;
-            document.querySelector("#chat-text").innerHTML += (data.text && data.sender + ": " + data.text + "\n") || "";
+                    }))
+                    document.querySelector("#input").value = "";
+                };
+                
+            });
         }
+        
     </script>
 
     <!-- Optional JavaScript -->
