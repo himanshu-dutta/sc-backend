@@ -2,7 +2,7 @@
 
 Repository for S-Connect backend application.
 
-- [x]     Database Models
+- [x] Database Models
 - [ ] Database Managers
   - [x] Conversation and Messages
   - [x] Connection, Notification
