@@ -1,6 +1,6 @@
 import json
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import connection, models
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 from django.core import serializers
 from main.models import Connection

@@ -77,6 +77,22 @@
                     `/?token=${data.token}`
                 );
 
+                fetch("http://127.0.0.1:8000/conversation/message/himanshu/", {
+                    method: "GET",
+                    headers: {
+                    'Content-Type': 'application/json',
+                    "Authorization": `Token ${data.token}`
+                    },
+
+                }).then(res => res.json()).
+                then(dt => {
+                    past_conv = "";
+                    dt.forEach(message => {
+
+                        document.querySelector("#chat-text").innerHTML += (message.text && message.sender.first_name + ": " + message.text + "\n") || "";
+                    });
+                });
+
                 chatSocket.onmessage = (e) => {
                     const data = JSON.parse(e.data);
                     console.log(data.previous_messages && JSON.parse(data.previous_messages));
