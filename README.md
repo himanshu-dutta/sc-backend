@@ -21,5 +21,5 @@ Repository for S-Connect backend application.
 - [ ] Dashboard APIs
   - [ ] Feed & Media Upload
   - [ ] Connections
-  - [ ] User Profile & Detial Updation Form
+  - [ ] User Profile & Detail Updation Form
 - [ ] Profile View
