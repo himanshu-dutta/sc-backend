@@ -1,16 +1,15 @@
 from enum import unique
+from django.db.models import fields
 from rest_framework import serializers
 from django.db import transaction
 from django.contrib.auth.models import User
 
-from .models import UserAccount
+from .models import Notification, Post, UserAccount
 
 from datetime import date
 
 # UserAccount Serializer
 class UserAccountSerializer(serializers.ModelSerializer):
-    date_of_birth = serializers.DateField()
-
     class Meta:
         model = UserAccount
         fields = ("first_name", "last_name", "phone", "date_of_birth")
@@ -20,13 +19,12 @@ class UserAccountSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email")
+        fields = ("username", "email")
 
 
 # Register Serializer
 class RegisterSerializer(serializers.ModelSerializer):
     user_account = UserAccountSerializer(required=True)
-    email = serializers.EmailField()
 
     class Meta:
         model = User
@@ -60,3 +58,19 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         if (today - dob).days // 365 < 18:
             raise serializers.ValidationError("User can't be below 18 years of age.")
+
+
+# Post Serializer
+class PostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = ("id", "text", "media", "likes", "created_at")
+
+
+# Notification Serializer
+class NotificationSerializer(serializers.ModelSerializer):
+    post = PostSerializer()
+
+    class Meta:
+        model = Notification
+        fields = ("id", "post", "notification_type", "url", "text", "created_at")

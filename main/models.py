@@ -1,7 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models.fields import related
-from django.db.models.lookups import Regex
 from django_resized import ResizedImageField
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
@@ -30,7 +28,9 @@ class TrackingModel(models.Model):
 
 
 class UserAccount(TrackingModel):
-    user = models.OneToOneField(User, related_name="user", on_delete=models.CASCADE)
+    user = models.OneToOneField(
+        User, related_name="useraccount", on_delete=models.CASCADE
+    )
 
     first_name = models.CharField(
         max_length=30,
@@ -96,7 +96,7 @@ class Post(TrackingModel):
 
     text = models.TextField(max_length=300, blank=True, null=True)
 
-    media = models.FileField(upload_to=get_media_path, null=True)
+    media = models.FileField(upload_to=get_media_path, null=True, blank=True)
 
     likes = models.PositiveIntegerField(default=0)
 
@@ -142,7 +142,7 @@ class Notification(TrackingModel):
 
     sent_to = models.ManyToManyField(
         UserAccount,
-        related_name="notification_to",
+        related_name="notifications",
     )
 
     post = models.ForeignKey(Post, on_delete=models.CASCADE)

@@ -31,9 +31,9 @@ class ConversationRetrievalAPI(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-    def get(self, request, username):
+    def get(self, request, sent_to):
         sender = UserAccount.objects.get(user=request.user)
-        receiver = UserAccount.objects.get(user=User.objects.get(username=username))
+        receiver = UserAccount.objects.get(user=User.objects.get(username=sent_to))
         conversation = Conversation.objects.get_or_create_conversation(sender, receiver)
         messages = Message.objects.filter(conversation=conversation)
         serializer = MessageSerializer(messages, many=True)

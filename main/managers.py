@@ -48,6 +48,8 @@ class ConnectionManager(models.Manager):
 
     def get_connected_users(self, user):
         connections = self.get_queryset().filter(users__in=[user], accepted=True)
+        if not connections.exists():
+            return None
 
         connected_users = []
 
@@ -89,50 +91,46 @@ class NotificationManager(models.Manager):
 
     """
 
-    def create_like_notification(self, receiver, sender, post):
+    def create_like_notification(self, sender, post):
+        receiver = post.user
         notifications = self.get_queryset().filter(
             notification_type="like", sent_by=sender, sent_to__in=[receiver], post=post
         )
 
         if not notifications.exists():
-            if post.user == receiver:
-                text = random.choice(self.LIKE_TEXT_CHOICES).format(
-                    s=sender.first_name, r=receiver.first_name, p=post
-                )
-                like_notification = self.create(
-                    notification_type="like", sent_by=sender, post=post, text=text
-                )
-                like_notification.sent_to.add(receiver)
+            text = random.choice(self.LIKE_TEXT_CHOICES).format(
+                s=sender.first_name, r=receiver.first_name, p=post
+            )
+            like_notification = self.create(
+                notification_type="like", sent_by=sender, post=post, text=text
+            )
+            like_notification.sent_to.add(receiver)
 
-                return like_notification
-            else:
-                raise ValidationError("Can't send like notification to a third user.")
+            return like_notification
 
         return notifications.first()
 
-    def create_share_notification(self, receiver, sender, post):
-
+    def create_share_notification(self, sender, post):
+        receiver = post.user
         notifications = self.get_queryset().filter(
             notification_type="share", sent_by=sender, sent_to__in=[receiver], post=post
         )
 
         if not notifications.exists():
-            if post.user == receiver:
-                text = random.choice(self.SHARE_TEXT_CHOICES).format(
-                    s=sender.first_name, r=receiver.first_name, p=post
-                )
-                share_notification = self.create(
-                    notification_type="share", sent_by=sender, post=post, text=text
-                )
-                share_notification.sent_to.add(receiver)
+            text = random.choice(self.SHARE_TEXT_CHOICES).format(
+                s=sender.first_name, r=receiver.first_name, p=post
+            )
+            share_notification = self.create(
+                notification_type="share", sent_by=sender, post=post, text=text
+            )
+            share_notification.sent_to.add(receiver)
 
-                return share_notification
-            else:
-                raise ValidationError("Can't send share notification to a third user.")
+            return share_notification
 
         return notifications.first()
 
-    def create_report_notification(self, receiver, sender, post):
+    def create_report_notification(self, sender, post):
+        receiver = post.user
         notifications = self.get_queryset().filter(
             notification_type="report",
             sent_by=sender,
@@ -141,23 +139,20 @@ class NotificationManager(models.Manager):
         )
 
         if not notifications.exists():
-            if post.user == receiver:
-                text = random.choice(self.REPORT_TEXT_CHOICES).format(
-                    s=sender.first_name, r=receiver.first_name, p=post
-                )
-                report_notification = self.create(
-                    notification_type="report", sent_by=sender, post=post, text=text
-                )
-                report_notification.sent_to.add(receiver)
+            text = random.choice(self.REPORT_TEXT_CHOICES).format(
+                s=sender.first_name, r=receiver.first_name, p=post
+            )
+            report_notification = self.create(
+                notification_type="report", sent_by=sender, post=post, text=text
+            )
+            report_notification.sent_to.add(receiver)
 
-                return report_notification
-            else:
-                raise ValidationError("Can't send report notification to a third user.")
+            return report_notification
 
         return notifications.first()
 
-    def create_post_notification(self, receivers, sender, post, url):
-
+    def create_post_notification(self, receivers, post):
+        sender = post.user
         notifications = self.get_queryset().filter(
             notification_type="post", sent_by=sender, post=post
         )
@@ -172,9 +167,9 @@ class NotificationManager(models.Manager):
                     notification_type="post",
                     sent_by=sender,
                     post=post,
-                    url=url,
                     text=text,
                 )
+
                 for receiver in receivers:
                     post_notification.sent_to.add(receiver)
 
