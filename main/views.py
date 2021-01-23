@@ -1,4 +1,3 @@
-import re
 from django.contrib.auth.models import User
 from main.models import Notification, Post, UserAccount, Connection
 from rest_framework import generics, permissions, status
