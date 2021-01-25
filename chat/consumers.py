@@ -43,18 +43,18 @@ class ConversationConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             self.conversation_name,
             {
-                "type": "tester_message",
-                "tester": "hello world",
+                "type": "confirm_connection",
+                "message": "connection established",
             },
         )
 
-    async def tester_message(self, event):
-        tester = event["tester"]
+    async def confirm_connection(self, event):
+        message = event["message"]
 
         await self.send(
             text_data=json.dumps(
                 {
-                    "tester": tester,
+                    "message": message,
                 }
             )
         )
@@ -101,4 +101,6 @@ class ConversationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, sender, text, media):
-        Message.objects.save_message(self.conversation, sender, text, media)
+        message = Message.objects.save_message(self.conversation, sender, text, media)
+        self.conversation.updated_at = message.updated_at
+        self.conversation.save()

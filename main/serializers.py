@@ -1,7 +1,5 @@
-from enum import unique
-from django.db.models import fields
-from rest_framework import serializers
 from django.db import transaction
+from rest_framework import serializers
 from django.contrib.auth.models import User
 
 from .models import Notification, Post, UserAccount
@@ -12,7 +10,20 @@ from datetime import date
 class UserAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAccount
-        fields = ("first_name", "last_name", "phone", "date_of_birth")
+        fields = (
+            "first_name",
+            "last_name",
+            "display_picture",
+            "phone",
+            "date_of_birth",
+            "profile_summary",
+        )
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAccount
+        fields = ("first_name", "last_name", "display_picture", "profile_summary")
 
 
 # User Serializer

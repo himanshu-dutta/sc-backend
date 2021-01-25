@@ -1,22 +1,24 @@
+import os
 from django.db import models
 from django.contrib.auth.models import User
 from django_resized import ResizedImageField
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
-from django.template.defaultfilters import slugify
+from django.template.defaultfilters import default, default_if_none, slugify
 from django.utils.translation import gettext_lazy as _
 
+from django.conf import settings
 from datetime import date
 
 from .managers import ConnectionManager, NotificationManager
 
 
 def get_dp_path(instance, filename):
-    return f"media/user/{slugify(instance.username)}/{filename}"
+    return f"media/user/{slugify(instance.username)}/dp/{filename}"
 
 
 def get_media_path(instance, filename):
-    return f"media/{slugify(instance.user.username)}/{filename}"
+    return f"media/user/{slugify(instance.user.username)}/post/{filename}"
 
 
 class TrackingModel(models.Model):
@@ -66,6 +68,7 @@ class UserAccount(TrackingModel):
         size=[300, 300],
         quality=100,
         blank=True,
+        default=os.path.join(settings.STATIC_ROOT, "images/default_dp.png"),
     )
 
     date_of_birth = models.DateField(blank=False, null=False)
@@ -108,6 +111,25 @@ class Post(TrackingModel):
 
     def __str__(self):
         return f"[{self.user.first_name}]-{self.text}"
+
+
+class PostInteraction(TrackingModel):
+    user = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
+
+    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+
+    like = models.BooleanField(default=False)
+    report = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Post Interaction"
+        unique_together = (
+            "user",
+            "post",
+        )
+
+    def __str__(self):
+        return f"[{self.user} - {self.post}]"
 
 
 class Connection(TrackingModel):

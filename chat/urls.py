@@ -1,7 +1,9 @@
 from django.urls import path
 
-from . import views
+from .views import ConversationAPI, MessagesAPI, ConversationListAPI
 
 urlpatterns = [
-    path("message/<str:username>/", views.ConversationRetrievalAPI.as_view()),
+    path("api/conversations", ConversationListAPI.as_view()),
+    path("api/conversation/<str:username>", ConversationAPI.as_view()),
+    path("api/message/<str:sent_to>/", MessagesAPI.as_view()),
 ]

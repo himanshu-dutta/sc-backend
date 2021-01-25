@@ -1,11 +1,13 @@
-from django.contrib.auth.models import User
-from main.models import Notification, Post, UserAccount, Connection
-from rest_framework import generics, permissions, status
+from django.db.transaction import atomic
 from rest_framework.views import APIView
+from django.contrib.auth.models import User
 from rest_framework.response import Response
+from rest_framework import generics, permissions, status
+from main.models import Notification, Post, PostInteraction, UserAccount, Connection
 from .serializers import (
     NotificationSerializer,
     UserAccountSerializer,
+    UserProfileSerializer,
     UserSerializer,
     PostSerializer,
     RegisterSerializer,
@@ -32,7 +34,6 @@ class UserRegistrationAPI(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        print(UserSerializer(user, context=self.get_serializer_context()).data)
         return Response(
             UserSerializer(user, context=self.get_serializer_context()).data
         )
@@ -64,6 +65,23 @@ class UserRetrievalAPI(APIView):
         return Response(user_serialized)
 
 
+class UserProfileViewAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get(self, request, username):
+        try:
+            user = User.objects.get(username=username)
+            user_account = UserProfileSerializer(user.useraccount)
+            user = UserSerializer(user)
+            user_serialized = dict(user.data)
+            user_account_serialized = dict(user_account.data)
+            user_serialized.update(user_account_serialized)
+            return Response(user_serialized)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+
 ##################
 #   Content APIs
 ##################
@@ -73,6 +91,9 @@ class PostListAPI(APIView):
     """
     The Enhanced Deepfake Detection Technology will later be integrated in the post method of this API.
     """
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request):
         posts = Post.objects.filter(user=request.user.useraccount)
@@ -105,11 +126,14 @@ class PostListAPI(APIView):
 
 
 class ConnectedUserPostListAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
     def get(self, request, username):
         try:
             useraccount = User.objects.get(username=username).useraccount
             connected_users = Connection.objects.get_connected_users(
-                self.user.useraccount
+                request.user.useraccount
             )
 
             if useraccount not in connected_users:
@@ -123,11 +147,82 @@ class ConnectedUserPostListAPI(APIView):
                 )
 
             return Response(PostSerializer(posts, many=True).data)
-        except:
+        except KeyboardInterrupt:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class PostInteractionAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    @atomic
+    def put(self, request, id, type):
+        try:
+            post = Post.objects.get(id=id)
+            useraccount = post.user
+
+            connected_users = Connection.objects.get_connected_users(
+                request.user.useraccount
+            )
+            if useraccount not in connected_users:
+                return Response(
+                    {"detail": "Can't interact with posts of unconnected users."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            post_interaction = PostInteraction.objects.filter(
+                post=post, user=request.user.useraccount
+            )
+
+            if not post_interaction.exists():
+                post_interaction = PostInteraction(
+                    post=post, user=request.user.useraccount
+                )
+            else:
+                post_interaction = post_interaction.first()
+
+            if type == "like":
+                if post_interaction.like:
+                    post.likes -= 1
+                    post_interaction.like = False
+                    Notification.objects.delete_notification(
+                        "like", request.user.useraccount, post
+                    )
+                else:
+                    post.likes += 1
+                    post_interaction.like = True
+                    Notification.objects.create_like_notification(
+                        request.user.useraccount, post
+                    )
+
+            if type == "report":
+                if post_interaction.report:
+                    post.reports -= 1
+                    post_interaction.report = False
+                    Notification.objects.delete_notification(
+                        "report", request.user.useraccount, post
+                    )
+                else:
+                    post.reports += 1
+                    post_interaction.report = True
+                    Notification.objects.create_report_notification(
+                        request.user.useraccount, post
+                    )
+
+            post.save()
+            post_interaction.save()
+
+            post_serialized = PostSerializer(post)
+            return Response(post_serialized.data)
+
+        except Post.DoesNotExist:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class PostAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
     def get(self, request, id):
         try:
             post = Post.objects.get(user=request.user.useraccount, id=id)
@@ -139,7 +234,6 @@ class PostAPI(APIView):
         try:
             post = Post.objects.get(user=request.user.useraccount, id=id)
             post_serialized = PostSerializer(post, data=request.data)
-            print(post_serialized.initial_data, post_serialized.is_valid())
             post_serialized.is_valid(raise_exception=True)
             post_serialized.save()
             return Response(post_serialized.data)
@@ -156,6 +250,9 @@ class PostAPI(APIView):
 
 
 class FeedAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
     def get(self, request):
         connected_users = Connection.objects.get_connected_users(
             request.user.useraccount
@@ -164,7 +261,6 @@ class FeedAPI(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         posts = Post.objects.filter(user__in=connected_users)
-        print(posts)
 
         return Response(PostSerializer(posts, many=True), status=status.HTTP_200_OK)
 
@@ -177,6 +273,9 @@ class NotificationListAPI(APIView):
         . post
         . report
     """
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request):
         user = request.user.useraccount
@@ -195,7 +294,7 @@ class NotificationListAPI(APIView):
                 not "type" in notification_data.keys()
                 or not "post_id" in notification_data.keys()
             ):
-                raise Exception("Argument error.")
+                raise Exception("Attribute error.")
 
             notification_type = notification_data["type"]
             post = Post.objects.get(id=notification_data["post_id"])
@@ -249,3 +348,8 @@ class NotificationListAPI(APIView):
 
         except:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+####################
+#   Connection APIs
+####################

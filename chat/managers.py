@@ -1,8 +1,6 @@
-import json
-from django.db import connection, models
+from django.db import models
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
-from django.core import serializers
 from main.models import Connection
 
 
@@ -31,7 +29,21 @@ class ConversationManager(models.Manager):
         return conversations.first()
 
     def by_user(self, user):
-        return self.get_queryset().filter(users__in=[user])
+        conversations = self.get_queryset().filter(users__in=[user])
+
+        if not conversations.exists():
+            return None
+
+        connected_users = []
+
+        for conversation in conversations:
+            users = conversation.users.all()
+            connected_user = (
+                ((users[0] != user) and users[0]) or (users[1] != user) and users[1]
+            )
+            connected_users.append(connected_user)
+
+        return conversations, connected_users
 
 
 class MessageManager(models.Manager):
@@ -43,22 +55,6 @@ class MessageManager(models.Manager):
                 "Can't send message to a conversation if the sender is not part of it."
             )
 
-        self.create(conversation=conversation, sender=sender, text=text, media=media)
-
-    def get_messages(self, conversation):
-        messages = serializers.serialize(
-            "json",
-            self.get_queryset().filter(conversation=conversation),
-            fields=[
-                "sender__first_name",
-                "sender__last_name",
-                "text",
-                "created_at",
-                "read",
-                "media",
-            ],
+        return self.create(
+            conversation=conversation, sender=sender, text=text, media=media
         )
-        messages = json.loads(messages)
-        messages_json = json.dumps([message["fields"] for message in messages])
-
-        return messages_json

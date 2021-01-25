@@ -2,10 +2,9 @@ from channels.auth import AuthMiddlewareStack
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 
-from knox.models import AuthToken as Token
-from knox.auth import TokenAuthentication
 from urllib.parse import parse_qs
-from knox import crypto
+from knox.auth import TokenAuthentication
+from knox.models import AuthToken as Token
 
 
 @database_sync_to_async
@@ -13,7 +12,7 @@ def get_user(scope):
     try:
         token_key = parse_qs(scope["query_string"].decode("utf8"))["token"][0]
         auther = TokenAuthentication()
-        user, token = auther.authenticate_credentials(token_key.encode())
+        user, _ = auther.authenticate_credentials(token_key.encode())
         return user
     except Token.DoesNotExist:
         return AnonymousUser()

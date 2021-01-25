@@ -4,9 +4,9 @@ from django.template.defaultfilters import slugify
 from main.models import TrackingModel, UserAccount
 from .managers import ConversationManager, MessageManager
 
-# class Conversation(models.Model):
+
 def get_media_path(instance, filename):
-    return f"media/{slugify(instance.sender.username)}/{filename}"
+    return f"media/user/{slugify(instance.sender.username)}/conversation/{filename}"
 
 
 class Conversation(TrackingModel):
@@ -16,12 +16,14 @@ class Conversation(TrackingModel):
 
     objects = ConversationManager()
 
-    def __str__(self) -> str:
+    def __str__(self):
         return f"{self.users.first()} and {self.users.last()}"
 
 
 class Message(TrackingModel):
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
 
     sender = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
 

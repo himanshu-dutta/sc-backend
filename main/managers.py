@@ -1,7 +1,8 @@
-from django.db import models
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-
 import random
+
+from django.db import models
+from django.db.transaction import atomic
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 
 class ConnectionManager(models.Manager):
@@ -10,6 +11,7 @@ class ConnectionManager(models.Manager):
     any interaction with the Connection models, no other interaction is allowed.
     """
 
+    @atomic
     def create_connection_request(self, sender, receiver):
         if sender == receiver:
             raise ValidationError("Both users can't be same.")
@@ -24,6 +26,7 @@ class ConnectionManager(models.Manager):
 
         return connections.first()
 
+    @atomic
     def accept_decline(self, sender, receiver, accept=False):
         connections = self.get_queryset().filter(users__in=[sender, receiver])
 
@@ -55,8 +58,8 @@ class ConnectionManager(models.Manager):
 
         for connection in connections:
             users = connection.users.all()
-            connected_user = (
-                ((users[0] != user) and users[0]) or (users[1] != user) and users[1]
+            connected_user = ((users.first() != user) and users.first()) or (
+                (users.last() != user) and users.last()
             )
             connected_users.append(connected_user)
 
@@ -91,6 +94,7 @@ class NotificationManager(models.Manager):
 
     """
 
+    @atomic
     def create_like_notification(self, sender, post):
         receiver = post.user
         notifications = self.get_queryset().filter(
@@ -110,6 +114,7 @@ class NotificationManager(models.Manager):
 
         return notifications.first()
 
+    @atomic
     def create_share_notification(self, sender, post):
         receiver = post.user
         notifications = self.get_queryset().filter(
@@ -129,6 +134,7 @@ class NotificationManager(models.Manager):
 
         return notifications.first()
 
+    @atomic
     def create_report_notification(self, sender, post):
         receiver = post.user
         notifications = self.get_queryset().filter(
@@ -151,6 +157,7 @@ class NotificationManager(models.Manager):
 
         return notifications.first()
 
+    @atomic
     def create_post_notification(self, receivers, post):
         sender = post.user
         notifications = self.get_queryset().filter(
@@ -179,29 +186,27 @@ class NotificationManager(models.Manager):
 
         return notifications.first()
 
-    def delete_notification(self, notification_type, sender, post, receiver=None):
+    @atomic
+    def delete_notification(self, notification_type, sender, post):
 
-        if notification_type == "like" and receiver:
+        if notification_type == "like":
             notifications = self.get_queryset().filter(
                 notification_type="like",
                 sent_by=sender,
-                sent_to__in=[receiver],
                 post=post,
             )
 
-        elif notification_type == "share" and receiver:
+        elif notification_type == "share":
             notifications = self.get_queryset().filter(
                 notification_type="share",
                 sent_by=sender,
-                sent_to__in=[receiver],
                 post=post,
             )
 
-        elif notification_type == "report" and receiver:
+        elif notification_type == "report":
             notifications = self.get_queryset().filter(
                 notification_type="report",
                 sent_by=sender,
-                sent_to__in=[receiver],
                 post=post,
             )
         else:
@@ -209,6 +214,5 @@ class NotificationManager(models.Manager):
                 notification_type="post", sent_by=sender, post=post
             )
 
-        print(notifications)
         if notifications.exists():
             notifications.first().delete()
