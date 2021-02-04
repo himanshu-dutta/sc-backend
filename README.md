@@ -3,10 +3,10 @@
 Repository for S-Connect backend application.
 
 - [x] Database Models
-- [ ] Database Managers
+- [x] Database Managers
   - [x] Conversation and Messages
   - [x] Connection, Notification
-  - [ ] Posts
+  - [x] Posts
 - [x] Authentication APIs
   - [x] Login
   - [x] Register
@@ -17,9 +17,9 @@ Repository for S-Connect backend application.
   - [x] Basic Messaging
   - [x] Websocket Token Authentication
   - [x] Complete Messagin Interface
-- [ ] Chatbox Interface
+- [x] Chatbox Interface
 - [ ] Dashboard APIs
-  - [ ] Feed & Media Upload
+  - [x] Feed & Media Upload
   - [ ] Connections
   - [ ] User Profile & Detail Updation Form
-- [ ] Profile View
+- [x] Profile View
