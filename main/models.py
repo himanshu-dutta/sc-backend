@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django_resized import ResizedImageField
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
-from django.template.defaultfilters import default, default_if_none, slugify
+from django.template.defaultfilters import slugify
 from django.utils.translation import gettext_lazy as _
 
 from django.conf import settings

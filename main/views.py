@@ -2,7 +2,7 @@ from django.db.transaction import atomic
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from rest_framework.response import Response
-from rest_framework import generics, permissions, status
+from rest_framework import generics, status
 from main.models import Notification, Post, PostInteraction, UserAccount, Connection
 from .serializers import (
     NotificationSerializer,
@@ -18,7 +18,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 from knox.views import LoginView as KnoxLoginView
 
 
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from knox.auth import TokenAuthentication
 
 
@@ -28,6 +28,11 @@ from knox.auth import TokenAuthentication
 
 # Register API
 class UserRegistrationAPI(generics.GenericAPIView):
+    """
+    For users to create a new account on the service.
+    Allowed Methods: POST
+    """
+
     serializer_class = RegisterSerializer
 
     def post(self, request, *args, **kwargs):
@@ -41,7 +46,12 @@ class UserRegistrationAPI(generics.GenericAPIView):
 
 # Login API
 class UserLoginAPI(KnoxLoginView):
-    permission_classes = (permissions.AllowAny,)
+    """
+    For users to log into their account.
+    Allowed Methods: POST
+    """
+
+    permission_classes = (AllowAny,)
 
     def post(self, request, format=None):
         serializer = AuthTokenSerializer(data=request.data)
@@ -53,8 +63,13 @@ class UserLoginAPI(KnoxLoginView):
 
 # User Retrievel API
 class UserRetrievalAPI(APIView):
+    """
+    To retrieve details of own account for the logged in user.
+    Allowed Methods: GET
+    """
+
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = UserSerializer(request.user)
@@ -66,8 +81,13 @@ class UserRetrievalAPI(APIView):
 
 
 class UserProfileViewAPI(APIView):
+    """
+    For users to retrieve details of another account, other than themselves,
+    Allowed Methods: GET
+    """
+
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, username):
         try:
@@ -89,11 +109,13 @@ class UserProfileViewAPI(APIView):
 
 class PostListAPI(APIView):
     """
-    The Enhanced Deepfake Detection Technology will later be integrated in the post method of this API.
+    Lists all the post created by the logged in user.
+    Allowed Methods: GET, POST.
+    TODO: The Enhanced Deepfake Detection Technology will later be integrated in the POST method of this API.
     """
 
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         posts = Post.objects.filter(user=request.user.useraccount)
@@ -114,7 +136,12 @@ class PostListAPI(APIView):
         """
         post_data = request.data
         if "media" not in post_data.keys() and "text" not in post_data.keys():
-            return Response({}, status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "detail": "both the text and media for the post can't be empty at the same time."
+                },
+                status.HTTP_400_BAD_REQUEST,
+            )
 
         post = Post(
             text=post_data["text"] if "text" in post_data.keys() else None,
@@ -126,8 +153,13 @@ class PostListAPI(APIView):
 
 
 class ConnectedUserPostListAPI(APIView):
+    """
+    Lists all the posts by a connected user, given the username.
+    Allowed Methods: GET
+    """
+
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, username):
         try:
@@ -152,8 +184,14 @@ class ConnectedUserPostListAPI(APIView):
 
 
 class PostInteractionAPI(APIView):
+    """
+    Allows the logged in user to interact with a post created by a connected user.
+    Allowed Methods: PUT
+    Posible interactions: LIKE, REPORT
+    """
+
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     @atomic
     def put(self, request, id, type):
@@ -220,8 +258,14 @@ class PostInteractionAPI(APIView):
 
 
 class PostAPI(APIView):
+    """
+    Allows the logged in user to create, edit or delete a post, as per their choice.
+    Allowed Methods: GET, PUT, DELETE
+    TODO: The Enhanced Deepfake Detection Technology will later be integrated in the PUT method of this API.
+    """
+
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, id):
         try:
@@ -250,8 +294,13 @@ class PostAPI(APIView):
 
 
 class FeedAPI(APIView):
+    """
+    API to retrieve all the recent posts by connected users.
+    Allowed Methods: GET
+    """
+
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         connected_users = Connection.objects.get_connected_users(
@@ -267,15 +316,13 @@ class FeedAPI(APIView):
 
 class NotificationListAPI(APIView):
     """
-    This API will be used to create a new post, and the allowed types are as follows:
-        . like
-        . share
-        . post
-        . report
+    This API will be used to create a new notification, and retrieve all the recent notifications for the logged in user.
+    Allowed Methods: GET, POST
+    Possible Notification Types: LIKE, SHARE, POST, REPORT
     """
 
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user.useraccount
@@ -347,9 +394,63 @@ class NotificationListAPI(APIView):
             )
 
         except:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "detail": "Either the attributes are wrong, or the user is not in connection, or the type of notification attempted to create has errors."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 ####################
 #   Connection APIs
 ####################
+
+
+class ConnectionRequestListAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pass
+
+    def post(self, reuqest):
+        pass
+
+
+class ConnectionRequestAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, user):
+        pass
+
+    def delete(self, request, user):
+        pass
+
+
+class ConnectionRequestResponseAPI(APIView):
+    """
+    Both the methods expect the request data to have the following structure:
+    {
+        "username": username of the user the request is sent by
+        "accept": True/False
+    }
+    """
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        pass
+
+    def delete(self, request):
+        pass
+
+
+class SuggestedUserAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pass

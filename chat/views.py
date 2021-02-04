@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from knox.auth import TokenAuthentication
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 
 
 from main.models import UserAccount
@@ -14,8 +14,13 @@ from .serializers import ConversationSerializer, MessageSerializer
 
 
 class ConversationListAPI(APIView):
+    """
+    Lists all the previously initiated conversations with connected users of the logged in user.
+    Allowed Methods: GET
+    """
+
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         conversations, conversations_with = Conversation.objects.by_user(
@@ -47,6 +52,14 @@ class ConversationListAPI(APIView):
 
 
 class ConversationAPI(APIView):
+    """
+    API to initiate a new conversation or delete any conversation previously initiated.
+    Allowed Methods: POST, DELETE
+    """
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, username):
 
         sender = request.user.useraccount
@@ -78,9 +91,13 @@ class ConversationAPI(APIView):
 
 
 class MessagesAPI(APIView):
+    """
+    API to retrieve all the messages belonging to a particular conversation.
+    Allowed Methods: GET
+    """
 
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     @atomic
     def get(self, request, sent_to):
