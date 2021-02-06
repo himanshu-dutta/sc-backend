@@ -1,10 +1,16 @@
+from os import stat
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import connection
 from django.db.transaction import atomic
+from rest_framework import response
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework import generics, status
 from main.models import Notification, Post, PostInteraction, UserAccount, Connection
 from .serializers import (
+    ConnectedUserSerializer,
+    ConnectionSerializer,
     NotificationSerializer,
     UserAccountSerializer,
     UserProfileSerializer,
@@ -311,7 +317,9 @@ class FeedAPI(APIView):
 
         posts = Post.objects.filter(user__in=connected_users)
 
-        return Response(PostSerializer(posts, many=True), status=status.HTTP_200_OK)
+        return Response(
+            PostSerializer(posts, many=True).data, status=status.HTTP_200_OK
+        )
 
 
 class NotificationListAPI(APIView):
@@ -407,48 +415,151 @@ class NotificationListAPI(APIView):
 ####################
 
 
+class ConnectionsListAPI(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        connected_useraccounts = Connection.objects.get_connected_users(
+            request.user.useraccount
+        )
+
+        if not len(connected_useraccounts):
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        connected_useraccounts_serialized = ConnectedUserSerializer(
+            connected_useraccounts, many=True
+        ).data
+
+        return Response(connected_useraccounts_serialized, status=status.HTTP_200_OK)
+
+
+class ConnectionsAPI(APIView):
+    def delete(self, request, username):
+        try:
+            user = User.objects.get(username=username)
+
+            Connection.objects.delete_connection(
+                request.user.useraccount, user.useraccount
+            )
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except User.DoesNotExist:
+            return Response(
+                {"details": "Invalid username."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+
 class ConnectionRequestListAPI(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        pass
+        connection_requests = Connection.objects.filter(
+            users__in=[request.user.useraccount], accepted=False
+        )
 
-    def post(self, reuqest):
-        pass
+        if not connection_requests.exists():
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        connection_requests_serialized = ConnectionSerializer(
+            connection_requests, many=True
+        ).data
+
+        return Response(connection_requests_serialized, status=status.HTTP_200_OK)
 
 
 class ConnectionRequestAPI(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, user):
-        pass
+    def post(self, request, username):
+        """
+        For sending connection request to other user.
+        """
+        try:
+            user = User.objects.get(username=username)
 
-    def delete(self, request, user):
-        pass
+            Connection.objects.create_connection_request(
+                request.user.useraccount, user.useraccount
+            )
+
+            return Response(status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response(
+                {"details": "Invalid username."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def delete(self, request, username):
+        """
+        For deleting sent connection request to other user.
+        """
+        try:
+            user = User.objects.get(username=username)
+
+            Connection.objects.delete_connection(
+                request.user.useraccount, user.useraccount, False
+            )
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except User.DoesNotExist:
+            return Response(
+                {"details": "Invalid username."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class ConnectionRequestResponseAPI(APIView):
-    """
-    Both the methods expect the request data to have the following structure:
-    {
-        "username": username of the user the request is sent by
-        "accept": True/False
-    }
-    """
 
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        pass
+    def put(self, request, username, accept):
+        """
+        For accepting/declining a connection request.
+        Only valid keywords for accept parameter:
+        {
+            "accept",
+            "decline"
+        }
+        """
+        try:
+            if accept != "accept" and accept != "decline":
+                raise Exception("Invalid Argument")
 
-    def delete(self, request):
-        pass
+            if accept == "accept":
+                accept = True
+            else:
+                accept = False
+
+            user = User.objects.get(username=username)
+
+            Connection.objects.accept_decline(
+                user.useraccount, request.user.useraccount, accept
+            )
+
+            return Response(status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response(
+                {"details": "Invalid username."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        except ObjectDoesNotExist:
+            return Response(
+                {"details": "No such connection request exists."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception:
+            return Response(
+                {"details": "Invalid argument."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class SuggestedUserAPI(APIView):
+    """
+    TODO: Implementation pending until a further research over implementation.
+    """
+
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 

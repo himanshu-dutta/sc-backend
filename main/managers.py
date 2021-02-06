@@ -16,7 +16,13 @@ class ConnectionManager(models.Manager):
         if sender == receiver:
             raise ValidationError("Both users can't be same.")
 
-        connections = self.get_queryset().filter(users__in=[sender, receiver])
+        connections = (
+            self.get_queryset()
+            .filter(users=sender)
+            .filter(users=receiver)
+            .filter(sent_by=sender)
+            .distinct()
+        )
 
         if not connections.exists():
             connection_request = self.create(sent_by=sender)
@@ -28,7 +34,14 @@ class ConnectionManager(models.Manager):
 
     @atomic
     def accept_decline(self, sender, receiver, accept=False):
-        connections = self.get_queryset().filter(users__in=[sender, receiver])
+        connections = (
+            self.get_queryset()
+            .filter(users=sender)
+            .filter(users=receiver)
+            .filter(sent_by=sender)
+            .filter(accepted=False)
+            .distinct()
+        )
 
         if connections.exists():
             selected_connection = connections.first()
@@ -42,9 +55,15 @@ class ConnectionManager(models.Manager):
         else:
             raise ObjectDoesNotExist("No such connection request exists")
 
-    def delete_connection(self, sender, receiver):
+    def delete_connection(self, sender, receiver, connected=True):
         # in case a user changes their mind to send the request through
-        connections = self.get_queryset().filter(users__in=[sender, receiver])
+        connections = (
+            self.get_queryset()
+            .filter(users=sender)
+            .filter(users=receiver)
+            .filter(accepted=connected)
+            .distinct()
+        )
 
         if connections.exists():
             connections.first().delete()

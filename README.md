@@ -20,6 +20,6 @@ Repository for S-Connect backend application.
 - [x] Chatbox Interface
 - [ ] Dashboard APIs
   - [x] Feed & Media Upload
-  - [ ] Connections
+  - [x] Connections
   - [ ] User Profile & Detail Updation Form
 - [x] Profile View
