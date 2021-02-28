@@ -74,19 +74,26 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        user_account_details = validated_data.pop("user_account")
-        self.vaidate_email(validated_data["email"])
-        self.validate_dob(user_account_details["date_of_birth"])
+        try:
+            user_account_details = validated_data.pop("user_account")
+            self.vaidate_email(validated_data["email"])
+            self.validate_dob(user_account_details["date_of_birth"])
 
-        user = User.objects.create_user(
-            validated_data["username"],
-            validated_data["email"],
-            validated_data["password"],
-        )
+            user = User.objects.create_user(
+                username=validated_data["username"],
+                email=validated_data["email"],
+                password=validated_data["password"]
+            )
 
-        user_account = UserAccount.objects.create(user=user, **user_account_details)
+            user_account = UserAccount.objects.create(user=user, **user_account_details)
 
-        return user
+            return user
+
+        except:
+            User.objects.get(username=validated_data["username"]).delete()
+            raise serializers.ValidationError(
+                "User account can't be created."
+            )
 
     def vaidate_email(self, email):
         if User.objects.filter(email__iexact=email.lower()).exists():
