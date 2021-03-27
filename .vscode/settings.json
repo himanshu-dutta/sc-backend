@@ -1,4 +1,0 @@
-{
-    "python.formatting.provider": "black",
-    "python.pythonPath": "/home/himanshu/Code/sconnect/backend/.env/bin/python3"
-}

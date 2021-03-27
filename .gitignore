@@ -140,3 +140,5 @@ cython_debug/
 
 media/
 .vscode/
+.redis_data
+.dbdata
