@@ -18,7 +18,7 @@ Repository for S-Connect backend application.
     -   [x] Websocket Token Authentication
     -   [x] Complete Messagin Interface
 -   [x] Chatbox Interface
--   [ ] Dashboard APIs
+-   [x] Dashboard APIs
     -   [x] Feed & Media Upload
     -   [x] Connections
     -   [x] User Profile & Detail Updation Form
