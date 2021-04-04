@@ -42,7 +42,6 @@ prod_config = {
                 "MYSQL_USER": config("DB_USER"),
             },
             "image": "mysql:5.7.22",
-            "ports": ["33066:3306"],
             "restart": "always",
             "volumes": [".dbdata:/var/lib/mysql"],
         },

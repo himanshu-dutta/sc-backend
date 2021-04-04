@@ -1,4 +1,4 @@
-from os import stat
+from django.core.files.base import ContentFile
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connection
 from django.db.transaction import atomic
@@ -76,6 +76,15 @@ class UserRetrievalAPI(APIView):
 
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
+    user_keys = ["username", "email"]
+    user_account_keys = [
+        "first_name",
+        "last_name",
+        "display_picture",
+        "phone",
+        "date_of_birth",
+        "profile_summary",
+    ]
 
     def get(self, request):
         user = UserSerializer(request.user)
@@ -84,6 +93,36 @@ class UserRetrievalAPI(APIView):
         user_account_serialized = dict(user_account.data)
         user_serialized.update(user_account_serialized)
         return Response(user_serialized)
+
+    def put(self, request):
+        user = UserSerializer(request.user)
+        user_account = UserAccountSerializer(UserAccount.objects.get(user=request.user))
+
+        user_serialized = user.data
+        user_account_serialized = user_account.data
+
+        for k, v in request.data.items():
+            if k in self.user_keys:
+                user_serialized[k] = v
+            if k in self.user_account_keys:
+                user_account_serialized[k] = v
+
+        updated_user = UserSerializer(instance=request.user, data=user_serialized)
+        updated_user_account = UserAccountSerializer(
+            instance=UserAccount.objects.get(user=request.user),
+            data=user_account_serialized,
+        )
+
+        if updated_user.is_valid(
+            raise_exception=True
+        ) and updated_user_account.is_valid(raise_exception=True):
+
+            updated_user.save()
+            updated_user_account.save()
+
+            return Response(status=status.HTTP_200_OK)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserProfileViewAPI(APIView):

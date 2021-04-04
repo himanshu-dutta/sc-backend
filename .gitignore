@@ -143,3 +143,4 @@ media/
 .redis_data
 .dbdata
 docker-compose.yml
+deployment/
