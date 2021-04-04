@@ -142,3 +142,4 @@ media/
 .vscode/
 .redis_data
 .dbdata
+docker-compose.yml
